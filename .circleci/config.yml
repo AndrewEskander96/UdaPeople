@@ -339,22 +339,22 @@ jobs:
           workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
       - revert-migrations
 
-  deploy-cloudfront:
-    docker:
-      - image: amazon/aws-cli
-    steps:
-      - checkout         
-      - run:
-          name: Update cloudfront distribution
-          command: |
-            aws cloudformation deploy \
-            --template-file .circleci/files/cloudfront.yml \
-            --stack-name "udapeople-cloudfront-${CIRCLE_WORKFLOW_ID:0:7}" \
-            --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
-            --tags project=udapeople
-      - destroy-environment:
-          workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
-      - revert-migrations
+  # deploy-cloudfront:
+  #   docker:
+  #     - image: amazon/aws-cli
+  #   steps:
+  #     - checkout         
+  #     - run:
+  #         name: Update cloudfront distribution
+  #         command: |
+  #           aws cloudformation deploy \
+  #           --template-file .circleci/files/cloudfront.yml \
+  #           --stack-name "udapeople-cloudfront-${CIRCLE_WORKFLOW_ID:0:7}" \
+  #           --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
+  #           --tags project=udapeople
+  #     - destroy-environment:
+  #         workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
+  #     - revert-migrations
           
       
   smoke-test:
@@ -403,46 +403,71 @@ jobs:
               return 1
             fi
 
-  # cloudfront-update:
-  #   docker:
-  #     - image: amazon/aws-cli
-  #   steps:
-  #     - checkout         
-  #     - run:
-  #         name: Update cloudfront distribution
-  #         command: |
-  #           export OldWorkflowID=$(aws cloudformation \
-  #                   list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
-  #                   --no-paginate --output text)
+  cloudfront-update:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - aws-cli/setup         
+      - run:
+          name: Update cloudfront distribution
+          command: |
+            export OldWorkflowID=$(aws cloudformation \
+                    list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
+                    --no-paginate --output text)
 
-  #           echo OldWorkflowID: "${OldWorkflowID}"
-  #           echo $OldWorkflowID >> ~/OldWorkflowID.txt
-  #           cat ~/OldWorkflowID.txt
+            echo ${OldWorkflowID} >> .circleci/ansible/workflowid.txt
+            cat .circleci/ansible/workflowid.txt
 
-  #           # export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
-  #           #   --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
+ 
+            aws cloudformation deploy \
+            --template-file .circleci/files/cloudfront.yml \
+            --stack-name "udapeople-update" \
+            --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
+            --tags project=udapeople-update
 
-  #           # printf '%s\n' "${STACKS[@]}"
+            echo OldWorkflowID: "${OldWorkflowID}"
+            echo Current Workflow ID: "${CIRCLE_WORKFLOW_ID:0:7}"
 
-  #           aws cloudformation deploy \
-  #           --template-file .circleci/files/cloudfront.yml \
-  #           --stack-name "udapeople2" \
-  #           --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
-  #           --tags project=udapeople
-            
-  #           echo OldWorkflowID: "${OldWorkflowID}"
-  #           echo Current Workflow ID: "${CIRCLE_WORKFLOW_ID:0:7}"
-            
-  #           # if printf '%s\n' "${STACKS[@]}" | grep -q "$OldWorkflowID"; then
-  #           #   echo "Removing previous stack"
-  #           #   aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
-  #           #   aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
-  #           #   aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
-  #           # fi
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - project/.circleci/ansible/workflowid.txt
 
-  #     - destroy-environment:
-  #         workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
-  #     - revert-migrations       
+      - destroy-environment:
+          workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
+      - revert-migrations
+
+  cleanup:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - aws-cli/setup
+      - run:  
+      - attach_workspace:
+          at: ~/               
+      - run:
+          name: Get old stack workflow id
+          command: |
+            export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
+            echo Stack Names: "${STACKS[@]}"
+            export OldWorkflowID=$(cat .circleci/ansible/workflowid.txt)
+            echo ${OldWorkflowID}
+            cat .circleci/ansible/workflowid.txt
+            echo ${CIRCLE_WORKFLOW_ID:0:7}
+            if [[ "${CIRCLE_WORKFLOW_ID:0:7}" != "${OldWorkflowID}" ]]
+            then
+              aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
+              aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
+              aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
+            fi
+      - destroy-environment:
+          workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
+  
+      - revert-migrations: 
+          workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
+    
 
             
 workflows:
@@ -483,12 +508,14 @@ workflows:
           filters:
             branches:
               only: [master]
-      - deploy-cloudfront:
-          requires: [deploy-backend, deploy-frontend]
-          filters:
-            branches:
-              only: [master]
+      # - deploy-cloudfront:
+      #     requires: [deploy-backend, deploy-frontend]
+      #     filters:
+      #       branches:
+      #         only: [master]
       - smoke-test:
           requires: [deploy-backend, deploy-frontend]
-      # - cloudfront-update:
-      #     requires: [smoke-test]
+      - cloudfront-update:
+          requires: [smoke-test]
+      - cleanup:
+          requires: [cloudfront-update]
