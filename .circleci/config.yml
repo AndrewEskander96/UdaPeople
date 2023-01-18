@@ -25,7 +25,7 @@ commands:
           when: on_fail
           command: |
             cd ~/project/backend
-            if [[ -f "~/project/.circleci/outputs/db_migration_success" ]]; then
+            if [[ -f "~/project/.circleci/outputs/migration_status.txt" ]]; then
               npm i
               npm run migration:revert
             fi
