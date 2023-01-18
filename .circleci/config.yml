@@ -387,28 +387,20 @@ jobs:
 
   cloudfront-update-and-cleanup:
     docker:
-      - image: python:3.7-alpine3.11
+      - image: amazon/aws-cli
     steps:
-      - checkout
-      - run:
-          name: Install dependencies
-          command: |
-            apk add --update  tar gzip 
-            apk add --update nodejs npm     
-            pip3 install awscli
-      - attach_workspace:
-          at: ~/            
+      - checkout         
       - run:
           name: Update cloudfront distribution and Cleanup
           command: |
-            export OldWorkflowID=$(aws cloudformation \
+            OldWorkflowID=$(aws cloudformation \
                     list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
                     --no-paginate --output text)
 
             echo OldWorkflowID: "${OldWorkflowID}"
 
-            export STACKS=$(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
-              --stack-status-filter CREATE_COMPLETE --no-paginate --output text)
+            export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
+              --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
 
             printf '%s\n' "${STACKS[@]}"
 
