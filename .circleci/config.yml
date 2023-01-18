@@ -443,8 +443,7 @@ jobs:
       - image: cimg/base:stable
     steps:
       - checkout
-      - aws-cli/setup
-      - run:  
+      - aws-cli/setup 
       - attach_workspace:
           at: ~/               
       - run:
