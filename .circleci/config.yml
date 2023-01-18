@@ -422,7 +422,7 @@ jobs:
  
             aws cloudformation deploy \
             --template-file .circleci/files/cloudfront.yml \
-            --stack-name "udapeople-cloudfront-c351b4a" \
+            --stack-name "udapeople-andrew" \
             --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
             --tags project=udapeople-update
 
@@ -467,7 +467,8 @@ jobs:
       - revert-migrations
 
     
-
+udapeople-c351b4a
+udapeople-c351b4a"
             
 workflows:
   UdaPeopleAndrew:
