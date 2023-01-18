@@ -422,7 +422,7 @@ jobs:
  
             aws cloudformation deploy \
             --template-file .circleci/files/cloudfront.yml \
-            --stack-name "udapeople-update" \
+            --stack-name "udapeople-cloudfront-c351b4a" \
             --parameter-overrides WorkflowID="${CIRCLE_WORKFLOW_ID:0:7}" \
             --tags project=udapeople-update
 
@@ -443,7 +443,7 @@ jobs:
       - image: cimg/base:stable
     steps:
       - checkout
-      - aws-cli/setup 
+      - aws-cli/setup  
       - attach_workspace:
           at: ~/               
       - run:
@@ -463,7 +463,9 @@ jobs:
             fi
       - destroy-environment:
           workflow_id: "${CIRCLE_WORKFLOW_ID:0:7}"
+
       - revert-migrations
+
     
 
             
@@ -505,6 +507,11 @@ workflows:
           filters:
             branches:
               only: [master]
+      # - deploy-cloudfront:
+      #     requires: [deploy-backend, deploy-frontend]
+      #     filters:
+      #       branches:
+      #         only: [master]
       - smoke-test:
           requires: [deploy-backend, deploy-frontend]
       - cloudfront-update:
