@@ -41,5 +41,5 @@ Resources:
   EC2EIP:     
     Type: AWS::EC2::EIPAssociation
     Properties: 
-      AllocationId: eipalloc-0360cd98c0761277e
+      AllocationId: eipalloc-0a9d4c4f74b3a0b41
       InstanceId: !Ref EC2Instance
